@@ -105,7 +105,6 @@ pytest
 
 | Component | Status |
 |---|---|
-| `ingest_qualifying()` | Stub |
 | `driver_history` (experience/recency) | Stub |
 | `qualifying_features` | Stub |
 | `race_result_features` | Stub |
