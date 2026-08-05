@@ -99,6 +99,16 @@ streamlit run src/app/streamlit_app.py
 pytest
 ```
 
+**Resumability & caching:** the pipeline is safe to re-run — every step uses
+`INSERT … ON CONFLICT DO UPDATE` (idempotent at the SQL level). FastF1 responses
+land in `data/fastf1_cache/` (gitignored) on the first fetch, so subsequent runs
+only re-hit the network for rounds that haven't been seen yet. Open-Meteo
+responses are not cached; re-runs re-fetch weather rows that were already in the
+warehouse, but the upserts overwrite cleanly. To re-ingest a single round without
+touching the rest: call `from src.data.fastf1_ingest import ingest_race; ingest_race(season, round)`
+(or `ingest_qualifying`) directly, then `from src.data.weather_ingest import
+fetch_historical; fetch_historical(season, round)`.
+
 ---
 
 ## Implemented vs stub

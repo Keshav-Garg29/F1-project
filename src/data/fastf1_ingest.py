@@ -275,6 +275,20 @@ def ingest_qualifying(season: int, round_: int) -> int:
 
     Returns the number of qualifying rows written.
     """
+    _ensure_cache_enabled()
+
+    # Qualifying has its own FK to races — schedule lookup + race upsert mirrors
+    # ``ingest_race`` so this function is safe when called in isolation (e.g.
+    # tests, or a future feature that ingests qualifying before the race).
+    schedule = fastf1.get_event_schedule(season, include_testing=False)
+    event_row = schedule.loc[schedule["RoundNumber"] == round_]
+    if event_row.empty:
+        raise ValueError(
+            f"season={season} round={round_} not found in FastF1 schedule"
+        )
+    circuit = str(event_row.iloc[0]["Location"])
+    race_date = pd.to_datetime(event_row.iloc[0]["EventDate"]).date()
+
     session = _load_session(season, round_, "Q")
 
     if session.results is None or session.results.empty:
@@ -283,6 +297,8 @@ def ingest_qualifying(season: int, round_: int) -> int:
     written = 0
     conn = connect()
     try:
+        _upsert_race_row(conn, season, round_, circuit, race_date)
+
         for _, row in session.results.iterrows():
             driver_id = _coerce_str(row.get("Abbreviation"))
             if not driver_id:
@@ -293,7 +309,7 @@ def ingest_qualifying(season: int, round_: int) -> int:
             # Best Q1/Q2/Q3 from FastF1's session status split.
             q1 = q2 = q3 = None
             try:
-                splits = session.laps.pick_driver(driver_id).split_qualifying_sessions()
+                splits = session.laps.pick_drivers(driver_id).split_qualifying_sessions()
                 # Returns [Q1_laps, Q2_laps, Q3_laps]; None if a session was cancelled.
                 for seg_idx, target in enumerate((q1, q2, q3)):
                     seg = splits[seg_idx] if seg_idx < len(splits) else None
@@ -313,13 +329,15 @@ def ingest_qualifying(season: int, round_: int) -> int:
                 # Forward NULLs — do not abort the round.
                 pass
 
-            _upsert_qualifying(conn, season, round_, driver_id, q1, q2, q3, grid)
             _upsert_driver(
                 conn,
                 driver_id,
                 full_name,
                 _nationality(session, driver_id),
             )
+            # Upsert qualifying AFTER the driver so the FK is satisfied —
+            # mirrors the order in ``ingest_race`` (driver then result).
+            _upsert_qualifying(conn, season, round_, driver_id, q1, q2, q3, grid)
             written += 1
 
         return written

@@ -26,6 +26,7 @@ from src.data.warehouse import connect
 
 
 def _delete(conn, table: str, where: str, params: list) -> None:
+    """``DELETE FROM <table> WHERE <where>`` with positional parameters."""
     conn.execute(f"DELETE FROM {table} WHERE {where}", params)
 
 
@@ -312,8 +313,128 @@ def test_ingest_race_records_one_row_per_driver() -> None:
         assert n_results == 3
         assert n_drivers == 3
     finally:
+        # Clear every FK-protected row that references our test drivers before
+        # deleting the drivers themselves. ``season = 2024`` alone isn't enough
+        # when a background pipeline is also writing real results for these
+        # drivers in other seasons — those would orphan-violate the delete.
+        for d in ("VER", "PER", "ALO"):
+            _delete(conn, "results", "driver_id = ?", [d])
+            _delete(conn, "qualifying_results", "driver_id = ?", [d])
         _delete(conn, "results", "season = ?", [2024])
         _delete(conn, "races", "season = ?", [2024])
+        for d in ("VER", "PER", "ALO"):
+            _delete(conn, "drivers", "driver_id = ?", [d])
+        conn.close()
+
+
+def test_ingest_qualifying_records_one_row_per_driver() -> None:
+    """A 3-driver qualifying session must write 3 qualifying rows + 3 drivers.
+
+    Mocks the FastF1 schedule + session with a ``laps`` MagicMock whose
+    ``pick_drivers(...).split_qualifying_sessions()`` returns three
+    1-row Laps DataFrames. This is the regression test for the
+    ``pick_driver`` -> ``pick_drivers`` deprecation fix.
+    """
+    conn = connect()
+    try:
+        schedule = pd.DataFrame({
+            "RoundNumber": [1],
+            "Location":    ["Sakhir"],
+            "EventDate":   [pd.Timestamp("2024-03-02")],
+        })
+        results_df = pd.DataFrame({
+            "DriverNumber": ["1", "2", "3"],
+            "Abbreviation":  ["VER", "PER", "ALO"],
+            "FullName":      ["Max Verstappen", "Sergio Perez", "Fernando Alonso"],
+            "TeamName":      ["Red Bull", "Red Bull", "Aston Martin"],
+            "CountryCode":   ["NED", "MEX", "ESP"],
+            "Position":      [1.0, 2.0, 3.0],
+            "GridPosition":  [1.0, 2.0, 3.0],
+        })
+
+        # Build a fake qualifying session. We need:
+        #   - session.results (DataFrame) — used to drive the row loop
+        #   - session.laps.pick_drivers(id).split_qualifying_sessions()
+        #         returns three seg-like objects, each whose pick_fastest()
+        #         exposes a Timedelta LapTime the production code can read.
+        #
+        # The production code does ``len(seg)`` (truthy check) then
+        # ``seg.pick_fastest().get("LapTime")``. ``pick_fastest()`` returns
+        # a pandas Series, and ``Series.get("LapTime")`` returns the column
+        # value. Each seg is therefore a Mock that reports a non-zero length
+        # and whose ``pick_fastest()`` yields a 1-row Series with a
+        # ``LapTime`` Timedelta.
+        q1_lap_time = pd.Timedelta(seconds=90.0)
+        q2_lap_time = pd.Timedelta(seconds=89.5)
+        q3_lap_time = pd.Timedelta(seconds=89.0)
+
+        def _make_seg(lap_time: pd.Timedelta) -> MagicMock:
+            seg = MagicMock()
+            seg.__len__.return_value = 1
+            # ``pick_fastest()`` returns a pandas Series with a LapTime column.
+            seg.pick_fastest.return_value = pd.Series(
+                {"LapTime": lap_time}
+            )
+            return seg
+
+        def _make_laps_pick(driver_id):
+            """``pick_drivers(driver_id)`` returns a Mock whose
+            ``split_qualifying_sessions()`` yields three seg Mocks keyed
+            to the driver's expected Q1/Q2/Q3 lap time."""
+            picks = {
+                "VER": _make_seg(q1_lap_time),
+                "PER": _make_seg(q2_lap_time),
+                "ALO": _make_seg(q3_lap_time),
+            }
+            seg = picks[driver_id]
+            select_mock = MagicMock()
+            # Same seg for all three slots — Q1/Q2/Q3 are distinct in real
+            # FastF1 data, but for this test we only need *some* Timedelta
+            # to reach the qualifying_results row.
+            select_mock.split_qualifying_sessions.return_value = [seg, seg, seg]
+            return select_mock
+
+        laps_mock = MagicMock()
+        laps_mock.pick_drivers.side_effect = _make_laps_pick
+
+        fake_session = MagicMock()
+        fake_session.results = results_df
+        fake_session.laps = laps_mock
+        fake_session.load = MagicMock()
+
+        with patch("src.data.fastf1_ingest.fastf1.get_event_schedule",
+                   return_value=schedule), \
+             patch("src.data.fastf1_ingest.fastf1.get_session",
+                   return_value=fake_session):
+            from src.data.fastf1_ingest import ingest_qualifying
+            written = ingest_qualifying(2024, 1)
+
+        assert written == 3
+
+        n_quali = conn.execute(
+            "SELECT COUNT(*) FROM qualifying_results WHERE season=2024 AND round=1"
+        ).fetchone()[0]
+        n_drivers = conn.execute(
+            "SELECT COUNT(*) FROM drivers WHERE driver_id IN ('VER','PER','ALO')"
+        ).fetchone()[0]
+        assert n_quali == 3
+        assert n_drivers == 3
+
+        # Spot-check that the Q1 time was stored in seconds (90.0).
+        q1_row = conn.execute(
+            "SELECT q1_time FROM qualifying_results "
+            "WHERE season=2024 AND round=1 AND driver_id='VER'"
+        ).fetchone()
+        assert q1_row[0] == pytest.approx(90.0)
+    finally:
+        # Same FK-protect-before-driver-delete pattern as the race test:
+        # any results / qualifying_results rows referencing our drivers must
+        # be cleared first, otherwise a concurrent pipeline write blocks the
+        # driver delete with a foreign-key violation.
+        for d in ("VER", "PER", "ALO"):
+            _delete(conn, "results", "driver_id = ?", [d])
+            _delete(conn, "qualifying_results", "driver_id = ?", [d])
+        _delete(conn, "qualifying_results", "season = ?", [2024])
         for d in ("VER", "PER", "ALO"):
             _delete(conn, "drivers", "driver_id = ?", [d])
         conn.close()
