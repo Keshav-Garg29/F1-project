@@ -12,8 +12,10 @@ Exit codes:
 
 from __future__ import annotations
 
+import argparse
 import logging
 import sys
+import time
 from typing import Iterable
 
 import fastf1
@@ -34,6 +36,12 @@ _FAILURE_NETS: tuple[type[BaseException], ...] = (
     *WEATHER_FAILURES,
     Exception,
 )
+
+# Per-step retry config. Transient ``IOException`` (network blips) succeed
+# on a second attempt; rate-limit errors do not and are skipped by the
+# retry loop.
+_MAX_RETRIES = 3
+_RETRY_BACKOFF_SECONDS = 10
 
 
 def _iter_rounds(season: int) -> list[int]:
@@ -60,8 +68,14 @@ def _iter_rounds(season: int) -> list[int]:
 def _run_steps(season: int, round_: int) -> list[tuple[str, str]]:
     """Run the three ingest steps for a round, catching failures.
 
+    Each step is retried up to ``_MAX_RETRIES`` times with a short sleep
+    backoff — FastF1 / Open-Meteo both have transient ``IOException`` /
+    ``RateLimitExceededError`` failures that succeed on second attempt.
+    A ``RateLimitExceededError`` is **not** retried (waiting 10 s won't
+    free up FastF1's hourly quota).
+
     Returns a list of ``(step_name, exception_type_name)`` tuples for
-    any step that raised. Empty list means clean.
+    any step that ultimately raised. Empty list means clean.
     """
     failures: list[tuple[str, str]] = []
     for step_name, step in (
@@ -69,29 +83,56 @@ def _run_steps(season: int, round_: int) -> list[tuple[str, str]]:
         ("ingest_qualifying", ingest_qualifying),
         ("fetch_historical", fetch_historical),
     ):
-        try:
-            step(season, round_)
-        except _FAILURE_NETS as exc:
-            log.warning(
-                "season=%s round=%s step=%s failed: %s",
-                season, round_, step_name, exc,
-                exc_info=True,
-            )
-            failures.append((step_name, type(exc).__name__))
+        last_exc: BaseException | None = None
+        for attempt in range(1, _MAX_RETRIES + 1):
+            try:
+                step(season, round_)
+                last_exc = None
+                break
+            except _FAILURE_NETS as exc:
+                last_exc = exc
+                # Rate-limit errors won't unblock with a short sleep —
+                # bail straightaway so the outer loop can move on.
+                if isinstance(exc, FASTF1_FAILURES) and 'RateLimit' in type(exc).__name__:
+                    log.warning(
+                        "season=%s round=%s step=%s rate-limited (no retry): %s",
+                        season, round_, step_name, exc,
+                    )
+                    break
+                if attempt < _MAX_RETRIES:
+                    log.info(
+                        "season=%s round=%s step=%s attempt %d/%d failed (%s), retrying in %ds",
+                        season, round_, step_name, attempt, _MAX_RETRIES,
+                        type(exc).__name__, _RETRY_BACKOFF_SECONDS,
+                    )
+                    time.sleep(_RETRY_BACKOFF_SECONDS)
+                else:
+                    log.warning(
+                        "season=%s round=%s step=%s failed after %d attempts: %s",
+                        season, round_, step_name, _MAX_RETRIES, exc,
+                        exc_info=True,
+                    )
+        if last_exc is not None:
+            failures.append((step_name, type(last_exc).__name__))
     return failures
 
 
-def main() -> int:
+def main(seasons: list[int] | None = None) -> int:
     """Walk 2018 through the latest fully-elapsed season, one round at a time.
 
     Per-round failures are non-fatal; the round list keeps going. ``main``
     returns ``0`` if every step of every round succeeded, otherwise ``1``
     with a summary printed to stdout.
+
+    Pass ``seasons=[2020, 2021, ...]`` to walk a subset — useful when
+    splitting the backfill into chunks that fit inside one shell-timeout
+    window without re-touching cached rounds.
     """
     FASTF1_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     fastf1.Cache.enable_cache(str(FASTF1_CACHE_DIR), use_requests_cache=False)
 
-    seasons = get_target_seasons()
+    if seasons is None:
+        seasons = get_target_seasons()
     print(f"Ingesting {len(seasons)} seasons: {seasons[0]}–{seasons[-1]}")
 
     failed_rounds: list[tuple[int, int, list[tuple[str, str]]]] = []
@@ -119,4 +160,13 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--seasons",
+        nargs="+",
+        type=int,
+        default=None,
+        help="Subset of seasons to ingest (default: every season from get_target_seasons())",
+    )
+    args = parser.parse_args()
+    sys.exit(main(seasons=args.seasons))
