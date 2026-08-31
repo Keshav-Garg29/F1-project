@@ -115,9 +115,9 @@ fetch_historical; fetch_historical(season, round)`.
 
 | Component | Status |
 |---|---|
-| `driver_history` (experience/recency) | Stub |
-| `qualifying_features` | Stub |
-| `race_result_features` | Stub |
+| `driver_history` (experience/recency) | Implemented |
+| `qualifying_features` | Implemented |
+| `race_result_features` | Implemented |
 | `train_qualifying_model.py` (Model A) | Stub |
 | `train_race_result_model.py` (Model B, chained on Model A) | Stub |
 | Frontend: scenario → A → B → result | Stub |
