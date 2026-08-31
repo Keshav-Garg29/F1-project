@@ -3,6 +3,11 @@
 --
 -- A human reads this file first; the Python module is the version
 -- the application actually executes.
+--
+-- The three feature tables (driver_history, qualifying_features,
+-- race_result_features) are owned by src/features/build_features.py
+-- and are NOT mirrored here — they have no CREATE TABLE in
+-- warehouse._SCHEMA_STATEMENTS by design.
 
 CREATE TABLE IF NOT EXISTS races (
     season     INTEGER NOT NULL,

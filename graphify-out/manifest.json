@@ -1,0 +1,162 @@
+{
+  ".claude/settings.json": {
+    "mtime": 1785602266.0245688,
+    "ast_hash": "af5683cedca023035194f9ad92eb0eef",
+    "semantic_hash": ""
+  },
+  ".claude/settings.local.json": {
+    "mtime": 1787808388.2787347,
+    "ast_hash": "575447d7237d33b2f4fe5d91ef653f7d",
+    "semantic_hash": ""
+  },
+  "notebooks/01_eda.py": {
+    "mtime": 1785602427.8826323,
+    "ast_hash": "d48f534d744d77bd750b025c5450d70b",
+    "semantic_hash": ""
+  },
+  "sql/schema.sql": {
+    "mtime": 1787724534.175397,
+    "ast_hash": "ab0f7b044704c85a8f8fd39759f6ee68",
+    "semantic_hash": ""
+  },
+  "src/__init__.py": {
+    "mtime": 1785602436.7368734,
+    "ast_hash": "2f4c0b7a6e409f682608bf5c0e0a06fb",
+    "semantic_hash": ""
+  },
+  "src/app/__init__.py": {
+    "mtime": 1785602434.0390806,
+    "ast_hash": "154c97e3aa6278dec9dabfb46d44faaa",
+    "semantic_hash": ""
+  },
+  "src/app/components.py": {
+    "mtime": 1785602447.8098614,
+    "ast_hash": "631b60e43c5718ffe719f03f1547c39d",
+    "semantic_hash": ""
+  },
+  "src/app/streamlit_app.py": {
+    "mtime": 1785602424.9984868,
+    "ast_hash": "46d0533966939dc2150422aa1825bf85",
+    "semantic_hash": ""
+  },
+  "src/app/styles.py": {
+    "mtime": 1785602426.431219,
+    "ast_hash": "4f81ccacca18c19d67182333f3417635",
+    "semantic_hash": ""
+  },
+  "src/config/__init__.py": {
+    "mtime": 1785602409.9485898,
+    "ast_hash": "90c2838b6e5208911373e11b6cb5d55d",
+    "semantic_hash": ""
+  },
+  "src/config/settings.py": {
+    "mtime": 1785602437.8119454,
+    "ast_hash": "63119eca252ae864e8f1abd530475b9b",
+    "semantic_hash": ""
+  },
+  "src/data/__init__.py": {
+    "mtime": 1785602430.412859,
+    "ast_hash": "f3db423351a2cc511e21edb301b7dbcc",
+    "semantic_hash": ""
+  },
+  "src/data/fastf1_ingest.py": {
+    "mtime": 1787210846.6890876,
+    "ast_hash": "2b65c439787df2b8a192557a1bdc8612",
+    "semantic_hash": ""
+  },
+  "src/data/run_pipeline.py": {
+    "mtime": 1787210846.6890876,
+    "ast_hash": "e445edb112f048b7b18173abd8a4d47f",
+    "semantic_hash": ""
+  },
+  "src/data/warehouse.py": {
+    "mtime": 1785602420.5007112,
+    "ast_hash": "f98669a00f9b1c26a151444afe4c3178",
+    "semantic_hash": ""
+  },
+  "src/data/weather_ingest.py": {
+    "mtime": 1787210846.6906922,
+    "ast_hash": "cd8b99dfe19db1c9bc5e1c209bced116",
+    "semantic_hash": ""
+  },
+  "src/features/__init__.py": {
+    "mtime": 1785602443.4671233,
+    "ast_hash": "520f245e2a033f48454dd01da0cf3a67",
+    "semantic_hash": ""
+  },
+  "src/features/build_features.py": {
+    "mtime": 1787724141.0719926,
+    "ast_hash": "b615d077adc0bc4f97c1427ba24d0972",
+    "semantic_hash": ""
+  },
+  "src/models/__init__.py": {
+    "mtime": 1785602445.5988274,
+    "ast_hash": "0573035e9feb400aa01cec6043787b22",
+    "semantic_hash": ""
+  },
+  "src/models/evaluate.py": {
+    "mtime": 1785602446.7622242,
+    "ast_hash": "b2ffa6ab0b076ce6bf3668ac69c888c0",
+    "semantic_hash": ""
+  },
+  "src/models/train_qualifying_model.py": {
+    "mtime": 1785602432.8858893,
+    "ast_hash": "6fe8fd0ca47fd14b6703729c8c6c782e",
+    "semantic_hash": ""
+  },
+  "src/models/train_race_result_model.py": {
+    "mtime": 1785602423.787604,
+    "ast_hash": "7182487bf2869a6334e0ed3c4d6d83a5",
+    "semantic_hash": ""
+  },
+  "tests/__init__.py": {
+    "mtime": 1785602441.3709629,
+    "ast_hash": "3a92395f2051f1f26186309e1da0997e",
+    "semantic_hash": ""
+  },
+  "tests/test_build_features.py": {
+    "mtime": 1787724330.2085752,
+    "ast_hash": "a53b120b1e7f00c67d81bf3847230990",
+    "semantic_hash": ""
+  },
+  "tests/test_data_ingest.py": {
+    "mtime": 1787210846.6917198,
+    "ast_hash": "40bbd7d2983a893a9006befa8bfd4063",
+    "semantic_hash": ""
+  },
+  "tests/test_warehouse.py": {
+    "mtime": 1785602435.3245778,
+    "ast_hash": "0b409551c52da4cdd6b407a5fd20440e",
+    "semantic_hash": ""
+  },
+  ".claude/commands/create_spec.md": {
+    "mtime": 1785601638.1091554,
+    "ast_hash": "bce497ef6a4a17ac6c135f06d3a645ba",
+    "semantic_hash": ""
+  },
+  ".claude/specs/build-features.md": {
+    "mtime": 1787720107.3986936,
+    "ast_hash": "a319236293e07dee8d84027cb87d24e0",
+    "semantic_hash": ""
+  },
+  ".claude/specs/data-ingestion.md": {
+    "mtime": 1787210846.5923564,
+    "ast_hash": "cf83a142ee25654a99645c53259164b9",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1787724561.1522105,
+    "ast_hash": "570e4523b8322c4c98b965ef0d3d68f0",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1785602071.7538478,
+    "ast_hash": "c1fd33d7f8c98a566be30936899e8229",
+    "semantic_hash": ""
+  },
+  "requirements.txt": {
+    "mtime": 1787210846.6865733,
+    "ast_hash": "0a8dd10db3397928e31e56344f4f0bb7",
+    "semantic_hash": ""
+  }
+}
